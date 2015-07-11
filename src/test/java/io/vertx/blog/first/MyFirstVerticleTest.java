@@ -10,7 +10,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * This is our JUnit test for our verticle. The test uses vert-unit, so we declare a custom runner.
+ * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
  */
 @RunWith(VertxUnitRunner.class)
 public class MyFirstVerticleTest {
