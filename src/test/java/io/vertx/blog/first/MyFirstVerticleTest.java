@@ -1,6 +1,8 @@
 package io.vertx.blog.first;
 
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -9,6 +11,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+
 /**
  * This is our JUnit test for our verticle. The test uses vertx-unit, so we declare a custom runner.
  */
@@ -16,6 +21,7 @@ import org.junit.runner.RunWith;
 public class MyFirstVerticleTest {
 
   private Vertx vertx;
+  private Integer port;
 
   /**
    * Before executing our test, let's deploy our verticle.
@@ -26,9 +32,21 @@ public class MyFirstVerticleTest {
    * @param context the test context.
    */
   @Before
-  public void setUp(TestContext context) {
+  public void setUp(TestContext context) throws IOException {
     vertx = Vertx.vertx();
-    vertx.deployVerticle(MyFirstVerticle.class.getName(), context.asyncAssertSuccess());
+
+    // Let's configure the verticle to listen on the 'test' port (randomly picked).
+    // We create deployment options and set the _configuration_ json object:
+    ServerSocket socket = new ServerSocket(0);
+    port = socket.getLocalPort();
+    socket.close();
+
+    DeploymentOptions options = new DeploymentOptions()
+        .setConfig(new JsonObject().put("http.port", port)
+        );
+
+    // We pass the options as the second parameter of the deployVerticle method.
+    vertx.deployVerticle(MyFirstVerticle.class.getName(), options, context.asyncAssertSuccess());
   }
 
   /**
@@ -55,7 +73,7 @@ public class MyFirstVerticleTest {
     // message. Then, we call the `complete` method on the async handler to declare this async (and here the test) done.
     // Notice that the assertions are made on the 'context' object and are not Junit assert. This ways it manage the
     // async aspect of the test the right way.
-    vertx.createHttpClient().getNow(8080, "localhost", "/", response -> {
+    vertx.createHttpClient().getNow(port, "localhost", "/", response -> {
       response.handler(body -> {
         context.assertTrue(body.toString().contains("Hello"));
         async.complete();
