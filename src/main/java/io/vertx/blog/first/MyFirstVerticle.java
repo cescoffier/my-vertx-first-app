@@ -1,6 +1,5 @@
 package io.vertx.blog.first;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerResponse;
@@ -50,10 +49,10 @@ public class MyFirstVerticle extends AbstractVerticle {
 
     router.route("/assets/*").handler(StaticHandler.create("assets"));
 
-    router.route().handler(BodyHandler.create());
     router.get("/api/whiskies").handler(this::getAll);
-    router.get("/api/whiskies/:id").handler(this::getOne);
+    router.route("/api/whiskies*").handler(BodyHandler.create());
     router.post("/api/whiskies").handler(this::addOne);
+    router.get("/api/whiskies/:id").handler(this::getOne);
     router.put("/api/whiskies/:id").handler(this::updateOne);
     router.delete("/api/whiskies/:id").handler(this::deleteOne);
 
@@ -77,9 +76,13 @@ public class MyFirstVerticle extends AbstractVerticle {
   }
 
   private void addOne(RoutingContext routingContext) {
+    // Read the request's content and create an instance of Whisky.
     final Whisky whisky = Json.decodeValue(routingContext.getBodyAsString(),
         Whisky.class);
+    // Add it to the backend map
     products.put(whisky.getId(), whisky);
+
+    // Return the created whisky as JSON
     routingContext.response()
         .putHeader("content-type", "application/json; charset=utf-8")
         .end(Json.encodePrettily(whisky));
@@ -105,7 +108,7 @@ public class MyFirstVerticle extends AbstractVerticle {
   private void updateOne(RoutingContext routingContext) {
     final String id = routingContext.request().getParam("id");
     JsonObject json = routingContext.getBodyAsJson();
-    if (id == null  || json == null) {
+    if (id == null || json == null) {
       routingContext.response().setStatusCode(400).end();
     } else {
       final Integer idAsInteger = Integer.valueOf(id);
@@ -123,17 +126,20 @@ public class MyFirstVerticle extends AbstractVerticle {
   }
 
   private void deleteOne(RoutingContext routingContext) {
-    final String id = routingContext.request().getParam("id");
+    String id = routingContext.request().getParam("id");
     if (id == null) {
       routingContext.response().setStatusCode(400);
     } else {
-      final Integer idAsInteger = Integer.valueOf(id);
+      Integer idAsInteger = Integer.valueOf(id);
       products.remove(idAsInteger);
     }
     routingContext.response().end();
   }
 
   private void getAll(RoutingContext routingContext) {
+    // Write the HTTP response
+    // The response is in JSON using the utf-8 encoding
+    // We returns the list of bottles
     routingContext.response()
         .putHeader("content-type", "application/json; charset=utf-8")
         .end(Json.encodePrettily(products.values()));
