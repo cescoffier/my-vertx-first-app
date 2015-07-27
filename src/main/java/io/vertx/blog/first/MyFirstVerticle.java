@@ -84,6 +84,7 @@ public class MyFirstVerticle extends AbstractVerticle {
 
     // Return the created whisky as JSON
     routingContext.response()
+        .setStatusCode(201)
         .putHeader("content-type", "application/json; charset=utf-8")
         .end(Json.encodePrettily(whisky));
   }
@@ -133,7 +134,7 @@ public class MyFirstVerticle extends AbstractVerticle {
       Integer idAsInteger = Integer.valueOf(id);
       products.remove(idAsInteger);
     }
-    routingContext.response().end();
+    routingContext.response().setStatusCode(204).end();
   }
 
   private void getAll(RoutingContext routingContext) {
