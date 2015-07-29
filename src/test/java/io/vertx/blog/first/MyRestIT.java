@@ -62,7 +62,7 @@ public class MyRestIT {
         .body("id", equalTo(whisky.getId()));
 
     // Delete the bottle
-    delete("/api/whiskies/" + whisky.getId()).then().assertThat().statusCode(200);
+    delete("/api/whiskies/" + whisky.getId()).then().assertThat().statusCode(204);
 
     // Check that the resrouce is not available anymore
     get("/api/whiskies/" + whisky.getId()).then()

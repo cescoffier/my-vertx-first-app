@@ -101,7 +101,7 @@ public class MyFirstVerticleTest {
     final String json = Json.encodePrettily(new Whisky("Jameson", "Ireland"));
     final String length = Integer.toString(json.length());
     vertx.createHttpClient().post(port, "localhost", "/api/whiskies", response -> {
-      context.assertEquals(response.statusCode(), 200);
+      context.assertEquals(response.statusCode(), 201);
       context.assertTrue(response.headers().get("content-type").contains("application/json"));
       response.bodyHandler(body -> {
         final Whisky whisky = Json.decodeValue(body.toString(), Whisky.class);
