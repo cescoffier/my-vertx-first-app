@@ -99,20 +99,20 @@ public class MyFirstVerticleTest {
   public void checkThatWeCanAdd(TestContext context) {
     Async async = context.async();
     final String json = Json.encodePrettily(new Whisky("Jameson", "Ireland"));
-    final String length = Integer.toString(json.length());
-    vertx.createHttpClient().post(port, "localhost", "/api/whiskies", response -> {
-      context.assertEquals(response.statusCode(), 200);
-      context.assertTrue(response.headers().get("content-type").contains("application/json"));
-      response.bodyHandler(body -> {
-        final Whisky whisky = Json.decodeValue(body.toString(), Whisky.class);
-        context.assertEquals(whisky.getName(), "Jameson");
-        context.assertEquals(whisky.getOrigin(), "Ireland");
-        context.assertNotNull(whisky.getId());
-        async.complete();
-      });
-    })
+    vertx.createHttpClient().post(port, "localhost", "/api/whiskies")
         .putHeader("content-type", "application/json")
-        .putHeader("content-length", length)
+        .putHeader("content-length", Integer.toString(json.length()))
+        .handler(response -> {
+          context.assertEquals(response.statusCode(), 201);
+          context.assertTrue(response.headers().get("content-type").contains("application/json"));
+          response.bodyHandler(body -> {
+            final Whisky whisky = Json.decodeValue(body.toString(), Whisky.class);
+            context.assertEquals(whisky.getName(), "Jameson");
+            context.assertEquals(whisky.getOrigin(), "Ireland");
+            context.assertNotNull(whisky.getId());
+            async.complete();
+          });
+        })
         .write(json)
         .end();
   }
