@@ -7,9 +7,11 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -225,22 +227,23 @@ public class MyFirstVerticle extends AbstractVerticle {
   }
 
   private void insert(Whisky whisky, SQLConnection connection, Handler<AsyncResult<Whisky>> next) {
-    connection.execute("INSERT INTO Whisky (name, origin) VALUES " +
-            "'" + whisky.getName() + "', " +
-            "'" + whisky.getOrigin() + "'",
-
-        (v) -> {
-          // We need to find the bottle to retrieve the id.
-          connection.query("SELECT * FROM Whisky WHERE name='" + whisky.getName() + "' AND origin='" + whisky.getOrigin
-              () + "'", ar -> {
-            Whisky w = new Whisky(ar.result().getRows().get(0));
-            next.handle(Future.succeededFuture(w));
-          });
+    String sql = "INSERT INTO Whisky (name, origin) VALUES ?, ?";
+    connection.updateWithParams(sql,
+        new JsonArray().add(whisky.getName()).add(whisky.getOrigin()),
+        (ar) -> {
+          if (ar.failed()) {
+            next.handle(Future.failedFuture(ar.cause()));
+            return;
+          }
+          UpdateResult result = ar.result();
+          // Build a new whisky instance with the generated id.
+          Whisky w = new Whisky(result.getKeys().getInteger(0), whisky.getName(), whisky.getOrigin());
+          next.handle(Future.succeededFuture(w));
         });
   }
 
   private void select(String id, SQLConnection connection, Handler<AsyncResult<Whisky>> resultHandler) {
-    connection.query("SELECT * FROM Whisky WHERE id='" + id + "'", ar -> {
+    connection.queryWithParams("SELECT * FROM Whisky WHERE id=?", new JsonArray().add(id), ar -> {
       if (ar.failed()) {
         resultHandler.handle(Future.failedFuture("Whisky not found"));
       } else {
@@ -255,16 +258,22 @@ public class MyFirstVerticle extends AbstractVerticle {
 
   private void update(String id, JsonObject content, SQLConnection connection,
                       Handler<AsyncResult<Whisky>> resultHandler) {
-    connection.update("UPDATE Whisky SET name='" + content.getString("name") + "',origin='" + content.getString
-        ("origin") + "' WHERE id='" + id + "'", ar -> {
-      if (ar.result().getUpdated() == 0) {
-        resultHandler.handle(Future.failedFuture("Whisky not found"));
-      } else {
-        resultHandler.handle(
-            Future.succeededFuture(new Whisky(Integer.valueOf(id),
-                content.getString("name"), content.getString("origin"))));
-      }
-    });
+    String sql = "UPDATE Whisky SET name=?, origin=? WHERE id=?";
+    connection.updateWithParams(sql,
+        new JsonArray().add(content.getString("name")).add(content.getString("origin")).add(id),
+        update -> {
+          if (update.failed()) {
+            resultHandler.handle(Future.failedFuture("Cannot update the whisky"));
+            return;
+          }
+          if (update.result().getUpdated() == 0) {
+            resultHandler.handle(Future.failedFuture("Whisky not found"));
+            return;
+          }
+          resultHandler.handle(
+              Future.succeededFuture(new Whisky(Integer.valueOf(id),
+                  content.getString("name"), content.getString("origin"))));
+        });
   }
 
 }
