@@ -1,3 +1,5 @@
 {
-  "http.port": ${http.port}
+  "http.port": ${http.port},
+  "url": "jdbc:hsqldb:mem:it-test?shutdown=true",
+  "driver_class": "org.hsqldb.jdbcDriver"
 }

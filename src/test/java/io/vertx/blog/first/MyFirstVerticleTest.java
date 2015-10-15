@@ -43,7 +43,10 @@ public class MyFirstVerticleTest {
     socket.close();
 
     DeploymentOptions options = new DeploymentOptions()
-        .setConfig(new JsonObject().put("http.port", port)
+        .setConfig(new JsonObject()
+            .put("http.port", port)
+            .put("url", "jdbc:hsqldb:mem:test?shutdown=true")
+            .put("driver_class", "org.hsqldb.jdbcDriver")
         );
 
     // We pass the options as the second parameter of the deployVerticle method.
