@@ -45,9 +45,9 @@ public class MyFirstVerticleTest {
     DeploymentOptions options = new DeploymentOptions()
         .setConfig(new JsonObject()
             .put("http.port", port)
-            .put("url", "jdbc:hsqldb:mem:test?shutdown=true")
-            .put("driver_class", "org.hsqldb.jdbcDriver")
-        );
+            .put("db_name", "whiskies-test")
+            .put("connection_string", "mongodb://localhost:27017")
+    );
 
     // We pass the options as the second parameter of the deployVerticle method.
     vertx.deployVerticle(MyFirstVerticle.class.getName(), options, context.asyncAssertSuccess());

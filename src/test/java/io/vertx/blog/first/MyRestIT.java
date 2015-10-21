@@ -17,7 +17,7 @@ public class MyRestIT {
   @BeforeClass
   public static void configureRestAssured() {
     RestAssured.baseURI = "http://localhost";
-    RestAssured.port = Integer.getInteger("http.port", 8080);
+    RestAssured.port = Integer.getInteger("http.port", 8082);
   }
 
   @AfterClass
@@ -28,12 +28,11 @@ public class MyRestIT {
   @Test
   public void checkThatWeCanRetrieveIndividualProduct() {
     // Get the list of bottles, ensure it's a success and extract the first id.
-
-    final int id = get("/api/whiskies").then()
+    final String id = get("/api/whiskies").then()
         .assertThat()
         .statusCode(200)
         .extract()
-        .jsonPath().getInt("find { it.name=='Bowmore 15 Years Laimrig' }.id");
+        .jsonPath().getString("find { it.name=='Bowmore 15 Years Laimrig' }.id");
 
     // Now get the individual resource and check the content
     get("/api/whiskies/" + id).then()
@@ -51,7 +50,9 @@ public class MyRestIT {
         .body("{\"name\":\"Jameson\", \"origin\":\"Ireland\"}").request().post("/api/whiskies").thenReturn().as(Whisky.class);
     assertThat(whisky.getName()).isEqualToIgnoringCase("Jameson");
     assertThat(whisky.getOrigin()).isEqualToIgnoringCase("Ireland");
-    assertThat(whisky.getId()).isNotZero();
+    assertThat(whisky.getId()).isNotEmpty();
+
+
 
     // Check that it has created an individual resource, and check the content.
     get("/api/whiskies/" + whisky.getId()).then()
@@ -61,12 +62,20 @@ public class MyRestIT {
         .body("origin", equalTo("Ireland"))
         .body("id", equalTo(whisky.getId()));
 
+
+
     // Delete the bottle
     delete("/api/whiskies/" + whisky.getId()).then().assertThat().statusCode(204);
+
+    System.out.println(get("/api/whiskies/" + whisky.getId()).asString());
+
 
     // Check that the resource is not available anymore
     get("/api/whiskies/" + whisky.getId()).then()
         .assertThat()
         .statusCode(404);
+
+    System.out.println(get("/api/whiskies").asString());
+
   }
 }

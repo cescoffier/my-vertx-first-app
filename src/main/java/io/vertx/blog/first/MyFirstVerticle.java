@@ -7,11 +7,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.jdbc.JDBCClient;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.UpdateResult;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -26,7 +23,8 @@ import java.util.stream.Collectors;
  */
 public class MyFirstVerticle extends AbstractVerticle {
 
-  private JDBCClient jdbc;
+  public static final String COLLECTION = "whiskies";
+  private MongoClient mongo;
 
   /**
    * This method is called when the verticle is deployed. It creates a HTTP server and registers a simple request
@@ -42,24 +40,13 @@ public class MyFirstVerticle extends AbstractVerticle {
   public void start(Future<Void> fut) {
 
     // Create a JDBC client
-    jdbc = JDBCClient.createShared(vertx, config(), "My-Whisky-Collection");
+    mongo = MongoClient.createShared(vertx, config());
 
-    startBackend(
-        (connection) -> createSomeData(connection,
-            (nothing) -> startWebApp(
-                (http) -> completeStartup(http, fut)
-            ), fut
+
+    createSomeData(
+        (nothing) -> startWebApp(
+            (http) -> completeStartup(http, fut)
         ), fut);
-  }
-
-  private void startBackend(Handler<AsyncResult<SQLConnection>> next, Future<Void> fut) {
-    jdbc.getConnection(ar -> {
-      if (ar.failed()) {
-        fut.fail(ar.cause());
-      } else {
-        next.handle(Future.succeededFuture(ar.result()));
-      }
-    });
   }
 
   private void startWebApp(Handler<AsyncResult<HttpServer>> next) {
@@ -107,23 +94,18 @@ public class MyFirstVerticle extends AbstractVerticle {
 
   @Override
   public void stop() throws Exception {
-    // Close the JDBC client.
-    jdbc.close();
+    mongo.close();
   }
 
   private void addOne(RoutingContext routingContext) {
-    jdbc.getConnection(ar -> {
-      // Read the request's content and create an instance of Whisky.
-      final Whisky whisky = Json.decodeValue(routingContext.getBodyAsString(),
-          Whisky.class);
-      SQLConnection connection = ar.result();
-      insert(whisky, connection, (r) ->
-          routingContext.response()
-              .setStatusCode(201)
-              .putHeader("content-type", "application/json; charset=utf-8")
-              .end(Json.encodePrettily(r.result())));
-    });
+    final Whisky whisky = Json.decodeValue(routingContext.getBodyAsString(),
+        Whisky.class);
 
+    mongo.insert(COLLECTION, whisky.toJson(), r ->
+        routingContext.response()
+            .setStatusCode(201)
+            .putHeader("content-type", "application/json; charset=utf-8")
+            .end(Json.encodePrettily(whisky.setId(r.result()))));
   }
 
   private void getOne(RoutingContext routingContext) {
@@ -131,20 +113,21 @@ public class MyFirstVerticle extends AbstractVerticle {
     if (id == null) {
       routingContext.response().setStatusCode(400).end();
     } else {
-      jdbc.getConnection(ar -> {
-        // Read the request's content and create an instance of Whisky.
-        SQLConnection connection = ar.result();
-        select(id, connection, result -> {
-          if (result.succeeded()) {
-            routingContext.response()
-                .setStatusCode(200)
-                .putHeader("content-type", "application/json; charset=utf-8")
-                .end(Json.encodePrettily(result.result()));
-          } else {
-            routingContext.response()
-                .setStatusCode(404).end();
+      mongo.findOne(COLLECTION, new JsonObject().put("_id", id), null, ar -> {
+        if (ar.succeeded()) {
+          if (ar.result() == null) {
+            routingContext.response().setStatusCode(404).end();
+            return;
           }
-        });
+          Whisky whisky = new Whisky(ar.result());
+          System.out.println("Returning : " + Json.encodePrettily(whisky));
+          routingContext.response()
+              .setStatusCode(200)
+              .putHeader("content-type", "application/json; charset=utf-8")
+              .end(Json.encodePrettily(whisky));
+        } else {
+          routingContext.response().setStatusCode(404).end();
+        }
       });
     }
   }
@@ -155,17 +138,20 @@ public class MyFirstVerticle extends AbstractVerticle {
     if (id == null || json == null) {
       routingContext.response().setStatusCode(400).end();
     } else {
-      jdbc.getConnection(ar ->
-          update(id, json, ar.result(), (whisky) -> {
-            if (whisky.failed()) {
+      mongo.update(COLLECTION,
+          new JsonObject().put("_id", id), // Select a unique document
+          // The update syntax: {$set, the json object containing the fields to update}
+          new JsonObject()
+              .put("$set", json),
+          v -> {
+            if (v.failed()) {
               routingContext.response().setStatusCode(404).end();
             } else {
               routingContext.response()
                   .putHeader("content-type", "application/json; charset=utf-8")
-                  .end(Json.encodePrettily(whisky.result()));
+                  .end(Json.encodePrettily(new Whisky(id, json.getString("name"), json.getString("origin"))));
             }
-          })
-      );
+          });
     }
   }
 
@@ -174,106 +160,51 @@ public class MyFirstVerticle extends AbstractVerticle {
     if (id == null) {
       routingContext.response().setStatusCode(400).end();
     } else {
-      jdbc.getConnection(ar -> {
-        SQLConnection connection = ar.result();
-        connection.execute("DELETE FROM Whisky WHERE id='" + id + "'",
-            result -> routingContext.response().setStatusCode(204).end());
-      });
+      mongo.removeOne(COLLECTION, new JsonObject().put("_id", id),
+          ar -> routingContext.response().setStatusCode(204).end());
     }
   }
 
   private void getAll(RoutingContext routingContext) {
-    jdbc.getConnection(ar -> {
-      SQLConnection connection = ar.result();
-      connection.query("SELECT * FROM Whisky", result -> {
-        List<Whisky> whiskies = result.result().getRows().stream().map(Whisky::new).collect(Collectors.toList());
-        routingContext.response()
-            .putHeader("content-type", "application/json; charset=utf-8")
-            .end(Json.encodePrettily(whiskies));
-      });
+    mongo.find(COLLECTION, new JsonObject(), results -> {
+      List<JsonObject> objects = results.result();
+      List<Whisky> whiskies = objects.stream().map(Whisky::new).collect(Collectors.toList());
+      routingContext.response()
+          .putHeader("content-type", "application/json; charset=utf-8")
+          .end(Json.encodePrettily(whiskies));
     });
   }
 
-  private void createSomeData(AsyncResult<SQLConnection> result, Handler<AsyncResult<Void>> next, Future<Void> fut) {
-    if (result.failed()) {
-      fut.fail(result.cause());
-    } else {
-      SQLConnection connection = result.result();
-      connection.execute(
-          "CREATE TABLE IF NOT EXISTS Whisky (id INTEGER IDENTITY, name varchar(100), origin varchar" +
-              "(100))",
-          ar -> {
+  private void createSomeData(Handler<AsyncResult<Void>> next, Future<Void> fut) {
+    Whisky bowmore = new Whisky("Bowmore 15 Years Laimrig", "Scotland, Islay");
+    Whisky talisker = new Whisky("Talisker 57° North", "Scotland, Island");
+    System.out.println(bowmore.toJson());
+
+    // Do we have data in the collection ?
+    mongo.count(COLLECTION, new JsonObject(), count -> {
+      if (count.succeeded()) {
+        if (count.result() == 0) {
+          // no whiskies, insert data
+          mongo.insert(COLLECTION, bowmore.toJson(), ar -> {
             if (ar.failed()) {
               fut.fail(ar.cause());
-              return;
+            } else {
+              mongo.insert(COLLECTION, talisker.toJson(), ar2 -> {
+                if (ar2.failed()) {
+                  fut.failed();
+                } else {
+                  next.handle(Future.<Void>succeededFuture());
+                }
+              });
             }
-            connection.query("SELECT * FROM Whisky", select -> {
-              if (select.failed()) {
-                fut.fail(ar.cause());
-                return;
-              }
-              if (select.result().getNumRows() == 0) {
-                insert(
-                    new Whisky("Bowmore 15 Years Laimrig", "Scotland, Islay"), connection,
-                    (v) -> insert(new Whisky("Talisker 57° North", "Scotland, Island"), connection,
-                        (r) -> next.handle(Future.<Void>succeededFuture())));
-              } else {
-                next.handle(Future.<Void>succeededFuture());
-              }
-            });
-
           });
-    }
-  }
-
-  private void insert(Whisky whisky, SQLConnection connection, Handler<AsyncResult<Whisky>> next) {
-    String sql = "INSERT INTO Whisky (name, origin) VALUES ?, ?";
-    connection.updateWithParams(sql,
-        new JsonArray().add(whisky.getName()).add(whisky.getOrigin()),
-        (ar) -> {
-          if (ar.failed()) {
-            next.handle(Future.failedFuture(ar.cause()));
-            return;
-          }
-          UpdateResult result = ar.result();
-          // Build a new whisky instance with the generated id.
-          Whisky w = new Whisky(result.getKeys().getInteger(0), whisky.getName(), whisky.getOrigin());
-          next.handle(Future.succeededFuture(w));
-        });
-  }
-
-  private void select(String id, SQLConnection connection, Handler<AsyncResult<Whisky>> resultHandler) {
-    connection.queryWithParams("SELECT * FROM Whisky WHERE id=?", new JsonArray().add(id), ar -> {
-      if (ar.failed()) {
-        resultHandler.handle(Future.failedFuture("Whisky not found"));
-      } else {
-        if (ar.result().getNumRows() >= 1) {
-          resultHandler.handle(Future.succeededFuture(new Whisky(ar.result().getRows().get(0))));
         } else {
-          resultHandler.handle(Future.failedFuture("Whisky not found"));
+          next.handle(Future.<Void>succeededFuture());
         }
+      } else {
+        // report the error
+        fut.fail(count.cause());
       }
     });
   }
-
-  private void update(String id, JsonObject content, SQLConnection connection,
-                      Handler<AsyncResult<Whisky>> resultHandler) {
-    String sql = "UPDATE Whisky SET name=?, origin=? WHERE id=?";
-    connection.updateWithParams(sql,
-        new JsonArray().add(content.getString("name")).add(content.getString("origin")).add(id),
-        update -> {
-          if (update.failed()) {
-            resultHandler.handle(Future.failedFuture("Cannot update the whisky"));
-            return;
-          }
-          if (update.result().getUpdated() == 0) {
-            resultHandler.handle(Future.failedFuture("Whisky not found"));
-            return;
-          }
-          resultHandler.handle(
-              Future.succeededFuture(new Whisky(Integer.valueOf(id),
-                  content.getString("name"), content.getString("origin"))));
-        });
-  }
-
 }
