@@ -1,5 +1,13 @@
 package io.vertx.blog.first;
 
+import de.flapdoodle.embed.mongo.MongodExecutable;
+import de.flapdoodle.embed.mongo.MongodProcess;
+import de.flapdoodle.embed.mongo.MongodStarter;
+import de.flapdoodle.embed.mongo.config.IMongodConfig;
+import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.Net;
+import de.flapdoodle.embed.mongo.distribution.Version;
+import de.flapdoodle.embed.process.runtime.Network;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -7,9 +15,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
@@ -23,6 +29,26 @@ public class MyFirstVerticleTest {
 
   private Vertx vertx;
   private Integer port;
+  private static MongodProcess MONGO;
+  private static int MONGO_PORT = 12345;
+
+  @BeforeClass
+  public static void initialize() throws IOException {
+    MongodStarter starter = MongodStarter.getDefaultInstance();
+
+    IMongodConfig mongodConfig = new MongodConfigBuilder()
+        .version(Version.Main.PRODUCTION)
+        .net(new Net(MONGO_PORT, Network.localhostIsIPv6()))
+        .build();
+
+    MongodExecutable mongodExecutable = starter.prepare(mongodConfig);
+    MONGO = mongodExecutable.start();
+  }
+
+  @AfterClass
+  public static void shutdown() {
+    MONGO.stop();
+  }
 
   /**
    * Before executing our test, let's deploy our verticle.
@@ -46,8 +72,8 @@ public class MyFirstVerticleTest {
         .setConfig(new JsonObject()
             .put("http.port", port)
             .put("db_name", "whiskies-test")
-            .put("connection_string", "mongodb://localhost:27017")
-    );
+            .put("connection_string", "mongodb://localhost:" + MONGO_PORT)
+        );
 
     // We pass the options as the second parameter of the deployVerticle method.
     vertx.deployVerticle(MyFirstVerticle.class.getName(), options, context.asyncAssertSuccess());

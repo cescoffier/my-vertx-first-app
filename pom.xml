@@ -53,7 +53,14 @@
       <version>3.1.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>de.flapdoodle.embed</groupId>
+      <artifactId>de.flapdoodle.embed.mongo</artifactId>
+      <version>1.50.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
 
   <build>
     <!-- Need to enable the filtering of the src/test/resources to inject the random port -->
@@ -193,6 +200,29 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>com.github.joelittlejohn.embedmongo</groupId>
+        <artifactId>embedmongo-maven-plugin</artifactId>
+        <version>0.2.0</version>
+        <executions>
+          <execution>
+            <id>start</id>
+            <goals>
+              <goal>start</goal>
+            </goals>
+            <configuration>
+              <port>37017</port>
+            </configuration>
+          </execution>
+          <execution>
+            <id>stop</id>
+            <goals>
+              <goal>stop</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
@@ -206,33 +236,33 @@
         </os>
       </activation>
       <build>
-           <plugins>
-             <plugin>
-               <artifactId>maven-antrun-plugin</artifactId>
-               <version>1.8</version>
-               <executions>
-                 <execution>
-                   <id>stop-vertx-app</id>
-                   <phase>post-integration-test</phase>
-                   <goals>
-                     <goal>run</goal>
-                   </goals>
-                   <configuration>
-                     <target>
-                       <exec executable="wmic"
-                             dir="${project.build.directory}"
-                             spawn="false">
-                         <arg value="process"/>
-                         <arg value="where"/>
-                         <arg value="CommandLine like '%${project.artifactId}%' and not name='wmic.exe'"/>
-                         <arg value="delete"/>
-                       </exec>
-                     </target>
-                   </configuration>
-                 </execution>
-               </executions>
-             </plugin>
-           </plugins>
+        <plugins>
+          <plugin>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>1.8</version>
+            <executions>
+              <execution>
+                <id>stop-vertx-app</id>
+                <phase>post-integration-test</phase>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <configuration>
+                  <target>
+                    <exec executable="wmic"
+                          dir="${project.build.directory}"
+                          spawn="false">
+                      <arg value="process"/>
+                      <arg value="where"/>
+                      <arg value="CommandLine like '%${project.artifactId}%' and not name='wmic.exe'"/>
+                      <arg value="delete"/>
+                    </exec>
+                  </target>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
       </build>
     </profile>
   </profiles>
