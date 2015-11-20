@@ -122,6 +122,7 @@ public class MyFirstVerticle extends AbstractVerticle {
               .setStatusCode(201)
               .putHeader("content-type", "application/json; charset=utf-8")
               .end(Json.encodePrettily(r.result())));
+          connection.close();
     });
 
   }
@@ -144,6 +145,7 @@ public class MyFirstVerticle extends AbstractVerticle {
             routingContext.response()
                 .setStatusCode(404).end();
           }
+          connection.close();
         });
       });
     }
@@ -164,6 +166,7 @@ public class MyFirstVerticle extends AbstractVerticle {
                   .putHeader("content-type", "application/json; charset=utf-8")
                   .end(Json.encodePrettily(whisky.result()));
             }
+            ar.result().close();
           })
       );
     }
@@ -177,7 +180,10 @@ public class MyFirstVerticle extends AbstractVerticle {
       jdbc.getConnection(ar -> {
         SQLConnection connection = ar.result();
         connection.execute("DELETE FROM Whisky WHERE id='" + id + "'",
-            result -> routingContext.response().setStatusCode(204).end());
+            result -> {
+              routingContext.response().setStatusCode(204).end();
+              connection.close();
+            });
       });
     }
   }
@@ -190,6 +196,7 @@ public class MyFirstVerticle extends AbstractVerticle {
         routingContext.response()
             .putHeader("content-type", "application/json; charset=utf-8")
             .end(Json.encodePrettily(whiskies));
+        connection.close();
       });
     });
   }
@@ -205,20 +212,26 @@ public class MyFirstVerticle extends AbstractVerticle {
           ar -> {
             if (ar.failed()) {
               fut.fail(ar.cause());
+              connection.close();
               return;
             }
             connection.query("SELECT * FROM Whisky", select -> {
               if (select.failed()) {
                 fut.fail(ar.cause());
+                connection.close();
                 return;
               }
               if (select.result().getNumRows() == 0) {
                 insert(
                     new Whisky("Bowmore 15 Years Laimrig", "Scotland, Islay"), connection,
                     (v) -> insert(new Whisky("Talisker 57° North", "Scotland, Island"), connection,
-                        (r) -> next.handle(Future.<Void>succeededFuture())));
+                        (r) -> {
+                          next.handle(Future.<Void>succeededFuture());
+                          connection.close();
+                        }));
               } else {
                 next.handle(Future.<Void>succeededFuture());
+                connection.close();
               }
             });
 
@@ -233,6 +246,7 @@ public class MyFirstVerticle extends AbstractVerticle {
         (ar) -> {
           if (ar.failed()) {
             next.handle(Future.failedFuture(ar.cause()));
+            connection.close();
             return;
           }
           UpdateResult result = ar.result();
