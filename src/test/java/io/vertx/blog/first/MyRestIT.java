@@ -67,15 +67,10 @@ public class MyRestIT {
     // Delete the bottle
     delete("/api/whiskies/" + whisky.getId()).then().assertThat().statusCode(204);
 
-    System.out.println(get("/api/whiskies/" + whisky.getId()).asString());
-
-
     // Check that the resource is not available anymore
     get("/api/whiskies/" + whisky.getId()).then()
         .assertThat()
         .statusCode(404);
-
-    System.out.println(get("/api/whiskies").asString());
 
   }
 }

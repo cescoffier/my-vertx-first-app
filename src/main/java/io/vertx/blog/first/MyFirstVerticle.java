@@ -39,7 +39,7 @@ public class MyFirstVerticle extends AbstractVerticle {
   @Override
   public void start(Future<Void> fut) {
 
-    // Create a JDBC client
+    // Create a Mongo client
     mongo = MongoClient.createShared(vertx, config());
 
 
@@ -120,7 +120,6 @@ public class MyFirstVerticle extends AbstractVerticle {
             return;
           }
           Whisky whisky = new Whisky(ar.result());
-          System.out.println("Returning : " + Json.encodePrettily(whisky));
           routingContext.response()
               .setStatusCode(200)
               .putHeader("content-type", "application/json; charset=utf-8")
