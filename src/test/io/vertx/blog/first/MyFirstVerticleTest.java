@@ -28,7 +28,7 @@ public class MyFirstVerticleTest {
     port = socket.getLocalPort();
     socket.close();
     
-    DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put("http.port",  port));
+    DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put("http.port", port));
     vertx.deployVerticle(MyFirstVerticle.class.getName(), options,
         context.asyncAssertSuccess());
   }
