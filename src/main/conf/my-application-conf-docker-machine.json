@@ -1,5 +1,0 @@
-{
-  "http.port": 8082,
-  "db_name": "whiskies",
-  "connection_string": "mongodb://192.168.99.100:27017"
-}

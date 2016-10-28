@@ -45,13 +45,11 @@
         load();
         initModal();
     });
-
     function create(name, origin) {
         $.post("/api/whiskies", JSON.stringify({name: name, origin: origin}), function () {
             load();
         }, "json");
     }
-
     function remove(id) {
         $.ajax({
             method: "DELETE",
@@ -60,7 +58,6 @@
             load();
         });
     }
-
     function update(id, name, origin) {
         $.ajax({
             method: "PUT",
@@ -70,7 +67,6 @@
             load();
         });
     }
-
     function load() {
         $("#content").children().remove();
         $.getJSON("/api/whiskies", function (data) {
@@ -95,14 +91,12 @@
             initCallbacks();
         });
     }
-
     function initCallbacks() {
         $(".product-delete").unbind().click(function() {
            var id = $(this).data("id");
            remove(id);
         });
     }
-
     function initModal() {
         $("#productModal").on('show.bs.modal', function (event) {
             var button = $(event.relatedTarget);

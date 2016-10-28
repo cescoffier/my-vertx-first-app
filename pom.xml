@@ -11,66 +11,28 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
-      <version>3.1.0</version>
+      <version>3.0.0</version>
     </dependency>
     <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-web</artifactId>
-      <version>3.1.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-mongo-client</artifactId>
-      <version>3.1.0</version>
-    </dependency>
-
-
-    <!-- For the tests -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.12</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-unit</artifactId>
-      <version>3.1.0</version>
-      <scope>test</scope>
-    </dependency>
-
-    <!-- Some other test dependencies to ease integration testing -->
-    <dependency>
-      <groupId>com.jayway.restassured</groupId>
-      <artifactId>rest-assured</artifactId>
-      <version>2.4.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-core</artifactId>
-      <version>3.1.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>de.flapdoodle.embed</groupId>
-      <artifactId>de.flapdoodle.embed.mongo</artifactId>
-      <version>1.50.0</version>
-      <scope>test</scope>
-    </dependency>
+	  <groupId>junit</groupId>
+	  <artifactId>junit</artifactId>
+	  <version>4.12</version>
+	  <scope>test</scope>
+	</dependency>
+	<dependency>
+	  <groupId>io.vertx</groupId>
+	  <artifactId>vertx-unit</artifactId>
+	  <version>3.3.3</version>
+	  <scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>io.vertx</groupId>
+		<artifactId>vertx-web</artifactId>
+		<version>3.0.0</version>
+	</dependency>
   </dependencies>
 
-
   <build>
-    <!-- Need to enable the filtering of the src/test/resources to inject the random port -->
-    <testResources>
-      <testResource>
-        <directory>src/test/resources</directory>
-        <filtering>true</filtering>
-      </testResource>
-    </testResources>
-
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -80,191 +42,33 @@
           <target>1.8</target>
         </configuration>
       </plugin>
-
-      <!-- Pick an unused random port, the selected port is set into the "http.port" variable -->
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.9.1</version>
-        <executions>
-          <execution>
-            <id>reserve-network-port</id>
-            <goals>
-              <goal>reserve-network-port</goal>
-            </goals>
-            <phase>process-sources</phase>
-            <configuration>
-              <portNames>
-                <portName>http.port</portName>
-              </portNames>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- We use the maven-antrun-plugin to start the application before the integration tests
-      and stop them afterward -->
-      <plugin>
-        <artifactId>maven-antrun-plugin</artifactId>
-        <version>1.8</version>
-        <executions>
-          <execution>
-            <id>start-vertx-app</id>
-            <phase>pre-integration-test</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <target>
-                <!--
-                Launch the application as in 'production' using the fatjar.
-                We pass the generated configuration, configuring the http port to the picked one
-                -->
-                <exec executable="${java.home}/bin/java"
-                      dir="${project.build.directory}"
-                      spawn="true">
-                  <arg value="-jar"/>
-                  <arg value="${project.artifactId}-${project.version}-fat.jar"/>
-                  <arg value="-conf"/>
-                  <arg value="${project.build.directory}/test-classes/my-it-config.json"/>
-                </exec>
-              </target>
-            </configuration>
-          </execution>
-          <execution>
-            <id>stop-vertx-app</id>
-            <phase>post-integration-test</phase>
-            <goals>
-              <goal>run</goal>
-            </goals>
-            <configuration>
-              <!--
-                Kill the started process.
-                Finding the right process is a bit tricky. Windows command in in the windows profile (below)
-                -->
-              <target>
-                <exec executable="bash"
-                      dir="${project.build.directory}"
-                      spawn="false">
-                  <arg value="-c"/>
-                  <arg value="ps ax | grep -i '${project.artifactId}' | awk 'NR==1{print $1}' | xargs kill -SIGTERM"/>
-                </exec>
-              </target>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <!-- Configure the integration-test plugin and pass the 'http.port' as system property -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.18.1</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>integration-test</goal>
-              <goal>verify</goal>
-            </goals>
-            <configuration>
-              <systemProperties>
-                <http.port>${http.port}</http.port>
-              </systemProperties>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.3</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <manifestEntries>
-                    <Main-Class>io.vertx.core.Launcher</Main-Class>
-                    <Main-Verticle>io.vertx.blog.first.MyFirstVerticle</Main-Verticle>
-                  </manifestEntries>
-                </transformer>
-              </transformers>
-              <artifactSet/>
-              <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>com.github.joelittlejohn.embedmongo</groupId>
-        <artifactId>embedmongo-maven-plugin</artifactId>
-        <version>0.2.0</version>
-        <executions>
-          <execution>
-            <id>start</id>
-            <goals>
-              <goal>start</goal>
-            </goals>
-            <configuration>
-              <port>37017</port>
-            </configuration>
-          </execution>
-          <execution>
-            <id>stop</id>
-            <goals>
-              <goal>stop</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+		  <groupId>org.apache.maven.plugins</groupId>
+		  <artifactId>maven-shade-plugin</artifactId>
+		  <version>2.3</version>
+		  <executions>
+		    <execution>
+		      <phase>package</phase>
+		      <goals>
+		        <goal>shade</goal>
+		      </goals>
+		      <configuration>
+		        <transformers>
+		          <transformer
+		            implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+		            <manifestEntries>
+		              <Main-Class>io.vertx.core.Starter</Main-Class>
+		              <Main-Verticle>io.vertx.blog.first.MyFirstVerticle</Main-Verticle>
+		            </manifestEntries>
+		          </transformer>
+		        </transformers>
+		        <artifactSet/>
+		        <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
+		      </configuration>
+		    </execution>
+		  </executions>
+		</plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <!-- A profile for windows as the stop command is different -->
-    <profile>
-      <id>windows</id>
-      <activation>
-        <os>
-          <family>windows</family>
-        </os>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <version>1.8</version>
-            <executions>
-              <execution>
-                <id>stop-vertx-app</id>
-                <phase>post-integration-test</phase>
-                <goals>
-                  <goal>run</goal>
-                </goals>
-                <configuration>
-                  <target>
-                    <exec executable="wmic"
-                          dir="${project.build.directory}"
-                          spawn="false">
-                      <arg value="process"/>
-                      <arg value="where"/>
-                      <arg value="CommandLine like '%${project.artifactId}%' and not name='wmic.exe'"/>
-                      <arg value="delete"/>
-                    </exec>
-                  </target>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 
 </project>
