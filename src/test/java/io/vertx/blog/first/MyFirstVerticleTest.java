@@ -90,7 +90,7 @@ public class MyFirstVerticleTest {
     Async async = context.async();
     vertx.createHttpClient().getNow(port, "localhost", "/assets/index.html", response -> {
       context.assertEquals(response.statusCode(), 200);
-      context.assertEquals(response.headers().get("content-type"), "text/html");
+      context.assertEquals(response.headers().get("content-type"), "text/html;charset=UTF-8");
       response.bodyHandler(body -> {
         context.assertTrue(body.toString().contains("<title>My Whisky Collection</title>"));
         async.complete();
