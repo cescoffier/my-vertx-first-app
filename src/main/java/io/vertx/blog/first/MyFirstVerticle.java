@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 /**
  * This is a verticle. A verticle is a _Vert.x component_. This verticle is implemented in Java, but you can
- * implement them in JavaScript, Groovy or even Ruby.
+ * implement them in JavaScript, Groovy, Ruby or Ceylon.
  */
 public class MyFirstVerticle extends AbstractVerticle {
 
