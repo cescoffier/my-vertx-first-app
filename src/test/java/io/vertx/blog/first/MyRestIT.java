@@ -11,6 +11,8 @@ import static org.hamcrest.Matchers.equalTo;
 
 /**
  * These tests checks our REST API.
+ * <code>mvn clean verity<code/>
+ * run Integration Test
  */
 public class MyRestIT {
 
