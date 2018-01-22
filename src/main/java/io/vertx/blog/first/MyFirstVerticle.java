@@ -79,7 +79,7 @@ public class MyFirstVerticle extends AbstractVerticle {
             // Retrieve the port from the configuration,
             // default to 8080.
             config().getInteger("http.port", 8080),
-            next::handle
+            next
         );
   }
 
@@ -93,7 +93,7 @@ public class MyFirstVerticle extends AbstractVerticle {
 
 
   @Override
-  public void stop() throws Exception {
+  public void stop() {
     mongo.close();
   }
 
@@ -190,15 +190,15 @@ public class MyFirstVerticle extends AbstractVerticle {
             } else {
               mongo.insert(COLLECTION, talisker.toJson(), ar2 -> {
                 if (ar2.failed()) {
-                  fut.failed();
+                  fut.fail(ar2.cause());
                 } else {
-                  next.handle(Future.<Void>succeededFuture());
+                  next.handle(Future.succeededFuture());
                 }
               });
             }
           });
         } else {
-          next.handle(Future.<Void>succeededFuture());
+          next.handle(Future.succeededFuture());
         }
       } else {
         // report the error
