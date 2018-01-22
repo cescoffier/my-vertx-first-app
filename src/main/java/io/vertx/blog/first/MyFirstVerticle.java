@@ -217,7 +217,7 @@ public class MyFirstVerticle extends AbstractVerticle {
             }
             connection.query("SELECT * FROM Whisky", select -> {
               if (select.failed()) {
-                fut.fail(ar.cause());
+                fut.fail(select.cause());
                 connection.close();
                 return;
               }
