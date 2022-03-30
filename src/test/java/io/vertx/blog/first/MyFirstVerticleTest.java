@@ -108,7 +108,7 @@ public class MyFirstVerticleTest {
         context.assertTrue(body.toString().contains("Hello"));
         async.complete();
       });
-    });
+    }).end();
   }
 
   @Test
@@ -121,7 +121,7 @@ public class MyFirstVerticleTest {
         context.assertTrue(body.toString().contains("<title>My Whisky Collection</title>"));
         async.complete();
       });
-    });
+    }).end();
   }
 
   @Test
